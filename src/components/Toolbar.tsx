@@ -2,9 +2,7 @@ import React, { ChangeEvent, useState } from "react";
 import { State } from "../model/state";
 import { assertUnreachable, copyListToClipboard, exportToCSV, exportToJSON, getCurrentPageUnfollowers, getUsersForDisplay } from "../utils/utils";
 import { SettingMenu } from "./SettingMenu";
-import { SettingIcon } from "./icons/SettingIcon";
 import { Timings } from "../model/timings";
-import { Logo } from "./icons/Logo";
 import { UserNode } from "../model/user";
 
 interface ToolBarProps {
@@ -30,179 +28,115 @@ export const Toolbar = ({
   whitelistedUsers,
   onWhitelistUpdate,
 }: ToolBarProps) => {
+  const [settingMenu, setSettingMenu] = useState(false);
 
-  const [setingMenu, setSettingMenu] = useState(false);
+  const isScan = state.status === "scanning";
+
+  const getDisplayedUsers = () => {
+    if (state.status !== "scanning") return [];
+    return getUsersForDisplay(
+      state.followingResults,
+      state.whitelistedResults,
+      state.currentTab,
+      state.searchTerm,
+      state.filter,
+    );
+  };
+
+  const handleLogoClick = () => {
+    if (isActiveProcess) return;
+    switch (state.status) {
+      case "initial":
+        if (confirm("Go back to Instagram?")) location.reload();
+        break;
+      case "scanning":
+      case "unfollowing":
+        setState({ status: "initial" });
+        break;
+      default:
+        assertUnreachable(state);
+    }
+  };
+
+  const progressPct = isActiveProcess && state.status === "unfollowing"
+    ? state.percentage
+    : isScan ? state.percentage : 0;
 
   return (
     <header className="app-header">
-      {isActiveProcess && state.status === 'unfollowing' && (
-        <div
-          className="progressbar"
-          style={{ '--progress-width': `${state.percentage}%` } as React.CSSProperties}
-        />
-      )}
-      <div className="app-header-content">
-        <div
-          className="logo"
-          onClick={() => {
-            if (isActiveProcess) {
-              // Avoid resetting state while active process.
-              return;
-            }
-            switch (state.status) {
-              case "initial":
-                if (confirm("Go back to Instagram?")) {
-                  location.reload();
-                }
-                break;
+      <div className="app-header-logo" onClick={handleLogoClick}>
+        INSTAWATCH
+      </div>
 
-              case "scanning":
-              case "unfollowing":
-                setState({
-                  status: "initial",
-                });
-            }
-          }}
-        >
-          <Logo />
-          <div className="logo-text">
-            <span>Instagram</span>
-            <span>Unfollowers</span>
-          </div>
-        </div>
-        <button
-          className="copy-list"
-          onClick={() => {
-            switch (state.status) {
-              case "scanning":
-                return copyListToClipboard(
-                  getUsersForDisplay(
-                    state.followingResults,
-                    state.whitelistedResults,
-                    state.currentTab,
-                    state.searchTerm,
-                    state.filter,
-                  ),
-                );
-              case "initial":
-              case "unfollowing":
-                return;
-              default:
-                assertUnreachable(state);
-            }
-          }}
-          disabled={state.status === "initial"}
-        >
-          Copy List
-        </button>
-        <button
-          className="copy-list"
-          title="Export to JSON"
-          onClick={() => {
-            if (state.status === "scanning") {
-              exportToJSON(getUsersForDisplay(state.followingResults, state.whitelistedResults, state.currentTab, state.searchTerm, state.filter));
-            }
-          }}
-          disabled={state.status !== "scanning"}
-        >
-          JSON
-        </button>
-        <button
-          className="copy-list"
-          title="Export to CSV"
-          onClick={() => {
-            if (state.status === "scanning") {
-              exportToCSV(getUsersForDisplay(state.followingResults, state.whitelistedResults, state.currentTab, state.searchTerm, state.filter));
-            }
-          }}
-          disabled={state.status !== "scanning"}
-        >
-          CSV
-        </button>
-        {
-          state.status === "initial" && <SettingIcon onClickLogo={() => { setSettingMenu(true); }} />
-        }
+      <div className="app-header-search">
+        <span className="app-header-search-icon">⌕</span>
         <input
           type="text"
-          className="search-bar"
-          placeholder="Search..."
-          disabled={state.status === "initial"}
+          className="app-header-search-input"
+          placeholder="Search profiles..."
+          disabled={!isScan && state.status !== "unfollowing"}
           value={state.status === "initial" ? "" : state.searchTerm}
           onChange={e => {
             switch (state.status) {
-              case "initial":
-                return;
+              case "initial": return;
               case "scanning":
-                return setState({
-                  ...state,
-                  searchTerm: e.currentTarget.value,
-                });
+                return setState({ ...state, searchTerm: e.currentTarget.value });
               case "unfollowing":
-                return setState({
-                  ...state,
-                  searchTerm: e.currentTarget.value,
-                });
+                return setState({ ...state, searchTerm: e.currentTarget.value });
               default:
                 assertUnreachable(state);
             }
           }}
         />
-        {state.status === "scanning" && (
-          <input
-            title="Select all on this page"
-            type="checkbox"
-            // Avoid allowing to select all before scan completed to avoid confusion
-            // regarding what exactly is selected while scanning in progress.
-            disabled={state.percentage < 100}
-            checked={
-              (() => {
-                const displayed = getUsersForDisplay(state.followingResults, state.whitelistedResults, state.currentTab, state.searchTerm, state.filter);
-                const pageUsers = getCurrentPageUnfollowers(displayed, state.page);
-                // Fix: Check if pageUsers is not empty and all are selected
-                // Previous logic didn't account for empty page or partial selections correctly
-                return pageUsers.length > 0 && pageUsers.every(u => state.selectedResults.some(s => s.id === u.id));
-              })()
-            }
-            className="toggle-all-checkbox"
-            // Fix: Changed from onClick to onChange for proper React checkbox handling
-            // onClick doesn't trigger reliably for controlled checkboxes
-            onChange={toggleCurrentePageUsers}
-          />
-        )}
-        {state.status === "scanning" && (
-          <input
-            title="Select all"
-            type="checkbox"
-            // Avoid allowing to select all before scan completed to avoid confusion
-            // regarding what exactly is selected while scanning in progress.
-            disabled={state.percentage < 100}
-            checked={
-              state.selectedResults.length ===
-              getUsersForDisplay(
-                state.followingResults,
-                state.whitelistedResults,
-                state.currentTab,
-                state.searchTerm,
-                state.filter,
-              ).length
-            }
-            className="toggle-all-checkbox"
-            // Fix: Changed from onClick to onChange for proper React checkbox handling
-            // onClick doesn't trigger reliably for controlled checkboxes
-            onChange={toggleAllUsers}
-          />
-        )}
       </div>
-      {(setingMenu) &&
+
+      <div className="app-header-actions">
+        {isScan && (
+          <>
+            <button className="app-header-btn" title="Copy list" onClick={() => copyListToClipboard(getDisplayedUsers())}>⎘</button>
+            <button className="app-header-btn" title="Export JSON" onClick={() => exportToJSON(getDisplayedUsers())}>JSON</button>
+            <button className="app-header-btn" title="Export CSV" onClick={() => exportToCSV(getDisplayedUsers())}>CSV</button>
+          </>
+        )}
+        {isScan && (
+          <label className="app-header-select-label" title="Select page">
+            <input
+              type="checkbox"
+              disabled={state.percentage < 100}
+              checked={(() => {
+                const p = getCurrentPageUnfollowers(getDisplayedUsers(), state.page);
+                return p.length > 0 && p.every(u => state.selectedResults.some(s => s.id === u.id));
+              })()}
+              onChange={toggleCurrentePageUsers}
+            />
+            <span>Page</span>
+          </label>
+        )}
+        {isScan && (
+          <label className="app-header-select-label" title="Select all">
+            <input
+              type="checkbox"
+              disabled={state.percentage < 100}
+              checked={state.selectedResults.length > 0 && state.selectedResults.length === getDisplayedUsers().length}
+              onChange={toggleAllUsers}
+            />
+            <span>All</span>
+          </label>
+        )}
+        <button className="app-header-btn app-header-btn--icon" title="Settings" onClick={() => setSettingMenu(true)}>⚙</button>
+      </div>
+
+      <div className="app-header-progress" style={{ '--progress-width': `${progressPct}%` } as React.CSSProperties} />
+
+      {settingMenu && (
         <SettingMenu
           setSettingState={setSettingMenu}
           currentTimings={currentTimings}
           setTimings={setTimings}
           whitelistedUsers={whitelistedUsers}
           onWhitelistUpdate={onWhitelistUpdate}
-        ></SettingMenu>
-      }
-
+        />
+      )}
     </header>
   );
 };

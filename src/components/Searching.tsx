@@ -4,7 +4,6 @@ import { State } from "../model/state";
 import { UserNode } from "../model/user";
 import { WHITELISTED_RESULTS_STORAGE_KEY } from "../constants/constants";
 
-
 export interface SearchingProps {
   state: State;
   setState: (state: State) => void;
@@ -23,12 +22,8 @@ export const Searching = ({
   pauseScan,
   handleScanFilter,
   toggleUser,
-  UserCheckIcon,
-  UserUncheckIcon,
 }: SearchingProps) => {
-  if (state.status !== "scanning") {
-    return null;
-  }
+  if (state.status !== "scanning") return null;
 
   const usersForDisplay = getUsersForDisplay(
     state.followingResults,
@@ -37,325 +32,256 @@ export const Searching = ({
     state.searchTerm,
     state.filter,
   );
-  let currentLetter = "";
 
-  const onNewLetter = (firstLetter: string) => {
-    currentLetter = firstLetter;
-    return <div className="alphabet-character">{currentLetter}</div>;
+  const toggleWhitelist = (e: React.MouseEvent<HTMLElement>, user: UserNode) => {
+    e.preventDefault();
+    e.stopPropagation();
+    let whitelistedResults: readonly UserNode[];
+    switch (state.currentTab) {
+      case "non_whitelisted":
+        whitelistedResults = [...state.whitelistedResults, user];
+        break;
+      case "whitelisted":
+        whitelistedResults = state.whitelistedResults.filter(r => r.id !== user.id);
+        break;
+      default:
+        assertUnreachable(state.currentTab);
+    }
+    localStorage.setItem(WHITELISTED_RESULTS_STORAGE_KEY, JSON.stringify(whitelistedResults));
+    setState({ ...state, whitelistedResults });
   };
 
+  const addVerified = () => {
+    const ids = new Set(state.selectedResults.map(u => u.id));
+    const toAdd = usersForDisplay.filter(u => u.is_verified && !ids.has(u.id));
+    setState({ ...state, selectedResults: [...state.selectedResults, ...toAdd] });
+  };
+
+  const addPrivate = () => {
+    const ids = new Set(state.selectedResults.map(u => u.id));
+    const toAdd = usersForDisplay.filter(u => u.is_private && !ids.has(u.id));
+    setState({ ...state, selectedResults: [...state.selectedResults, ...toAdd] });
+  };
+
+  const clearSelection = () => setState({ ...state, selectedResults: [] });
+
+  const maxPage = getMaxPage(usersForDisplay);
+  let currentLetter = "";
+
   return (
-    <section className="flex">
-      <aside className="app-sidebar">
-        <div className="sidebar-content">
-          <menu className="sidebar-filters-grid">
-            <p>Filter</p>
-            <label className="badge m-small">
-              <input
-                type="checkbox"
-                name="showNonFollowers"
-                checked={state.filter.showNonFollowers}
-                onChange={handleScanFilter}
-              />
-              &nbsp;Non-Followers
-            </label>
-            <label className="badge m-small">
-              <input
-                type="checkbox"
-                name="showFollowers"
-                checked={state.filter.showFollowers}
-                onChange={handleScanFilter}
-              />
-              &nbsp;Followers
-            </label>
-            <label className="badge m-small">
-              <input
-                type="checkbox"
-                name="showVerified"
-                checked={state.filter.showVerified}
-                onChange={handleScanFilter}
-              />
-              &nbsp;Verified
-            </label>
-            <label className="badge m-small">
-              <input
-                type="checkbox"
-                name="showPrivate"
-                checked={state.filter.showPrivate}
-                onChange={handleScanFilter}
-              />
-              &nbsp;Private
-            </label>
-          </menu>
+    <section className="iw-layout">
+      {/* ── Sidebar ── */}
+      <aside className="iw-sidebar">
+        <div className="iw-sidebar-body">
 
-          <div className="sidebar-buttons-grid">
-            <button
-              className="button-secondary"
-              onClick={() => {
-                const verifiedUsers = usersForDisplay.filter(u => u.is_verified);
-                const currentIds = new Set(state.selectedResults.map(u => u.id));
-                const toAdd = verifiedUsers.filter(u => !currentIds.has(u.id));
-                setState({ ...state, selectedResults: [...state.selectedResults, ...toAdd] });
-              }}
-            >
-              Verified
-            </button>
-            <button
-              className="button-secondary"
-              onClick={() => {
-                const privateUsers = usersForDisplay.filter(u => u.is_private);
-                const currentIds = new Set(state.selectedResults.map(u => u.id));
-                const toAdd = privateUsers.filter(u => !currentIds.has(u.id));
-                setState({ ...state, selectedResults: [...state.selectedResults, ...toAdd] });
-              }}
-            >
-              Private
-            </button>
-            <button
-              className="button-secondary danger-text"
-              onClick={() => setState({ ...state, selectedResults: [] })}
-            >
-              Clear
-            </button>
-          </div>
-          <div className="sidebar-stats">
-            <p>Displayed: {usersForDisplay.length}</p>
-            <p>Total Scanned: {state.followingResults.length}</p>
-            <p className="whitelist-counter">
-              <span className="whitelist-badge">★</span> Whitelisted: {state.whitelistedResults.length}
-            </p>
+          {/* Scan status */}
+          <div className="iw-sidebar-status">
+            <div className="iw-sidebar-status-dot" />
+            <div>
+              <div className="iw-sidebar-status-title">
+                {state.percentage < 100 ? "Scanning…" : "Scan Complete"}
+              </div>
+              <div className="iw-sidebar-status-sub">{state.followingResults.length} profiles</div>
+            </div>
           </div>
 
+          {/* Filters */}
+          <div className="iw-section">
+            <span className="iw-label">FILTERS</span>
+            <div className="iw-filter-grid">
+              {(["showNonFollowers", "showFollowers", "showVerified", "showPrivate"] as const).map(key => {
+                const labels: Record<string, string> = {
+                  showNonFollowers: "Non-Followers",
+                  showFollowers: "Followers",
+                  showVerified: "Verified",
+                  showPrivate: "Private",
+                };
+                return (
+                  <label key={key} className={`iw-filter-pill ${state.filter[key] ? "iw-filter-pill--active" : ""}`}>
+                    <input type="checkbox" name={key} checked={state.filter[key]} onChange={handleScanFilter} />
+                    {labels[key]}
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Select helpers */}
+          <div className="iw-section">
+            <span className="iw-label">SELECT</span>
+            <div className="iw-select-buttons">
+              <button className="iw-select-btn" onClick={addVerified}>+ Verified</button>
+              <button className="iw-select-btn" onClick={addPrivate}>+ Private</button>
+              <button className="iw-select-btn iw-select-btn--danger" onClick={clearSelection}>Clear</button>
+            </div>
+          </div>
+
+          {/* Stats */}
+          <div className="iw-stats-card">
+            <div className="iw-stats-row">
+              <span>Displayed</span><strong>{usersForDisplay.length}</strong>
+            </div>
+            <div className="iw-stats-row">
+              <span>Total</span><strong>{state.followingResults.length}</strong>
+            </div>
+            <div className="iw-stats-row">
+              <span>★ Whitelisted</span><strong>{state.whitelistedResults.length}</strong>
+            </div>
+          </div>
+
+          {/* Scan summary */}
           {state.percentage === 100 && (
-            <div className="sidebar-summary">
-              <h4>Scan Summary</h4>
-              <div className="summary-grid">
-                <div className="summary-item">
-                  <span>Non-Followers</span>
-                  <strong>{state.followingResults.filter(u => !u.follows_viewer).length}</strong>
+            <div className="iw-scan-summary">
+              <span className="iw-label">SCAN SUMMARY</span>
+              <div className="iw-summary-grid">
+                <div className="iw-summary-item">
+                  <span>{state.followingResults.filter(u => !u.follows_viewer).length}</span>
+                  <small>Non-Followers</small>
                 </div>
-                <div className="summary-item">
-                  <span>Verified</span>
-                  <strong>{state.followingResults.filter(u => u.is_verified).length}</strong>
+                <div className="iw-summary-item">
+                  <span>{state.followingResults.filter(u => u.is_verified).length}</span>
+                  <small>Verified</small>
                 </div>
-                <div className="summary-item">
-                  <span>Private</span>
-                  <strong>{state.followingResults.filter(u => u.is_private).length}</strong>
+                <div className="iw-summary-item">
+                  <span>{state.followingResults.filter(u => u.is_private).length}</span>
+                  <small>Private</small>
                 </div>
               </div>
             </div>
           )}
-          <div className="sidebar-footer-controls">
-            <button
-              className="button-control button-pause"
-              onClick={pauseScan}
-            >
-              {scanningPaused ? "Resume" : "Pause"}
+        </div>
+
+        {/* Sidebar footer */}
+        <div className="iw-sidebar-footer">
+          <div className="iw-sidebar-controls">
+            <button className="iw-ctrl-btn" onClick={pauseScan}>
+              {scanningPaused ? "▶ Resume" : "⏸ Pause"}
             </button>
-            <div className="sidebar-pagination">
-              <div className="pagination-controls">
-                <a
-                  onClick={() => {
-                    if (state.page - 1 > 0) {
-                      setState({
-                        ...state,
-                        page: state.page - 1,
-                      });
-                    }
-                  }}
-                >
-                  ❮
-                </a>
-                <span>
-                  {state.page}/{getMaxPage(usersForDisplay)}
-                </span>
-                <a
-                  onClick={() => {
-                    if (state.page < getMaxPage(usersForDisplay)) {
-                      setState({
-                        ...state,
-                        page: state.page + 1,
-                      });
-                    }
-                  }}
-                >
-                  ❯
-                </a>
-              </div>
+            <div className="iw-pagination">
+              <button
+                className="iw-page-btn"
+                onClick={() => state.page > 1 && setState({ ...state, page: state.page - 1 })}
+              >‹</button>
+              <span>{state.page} / {maxPage}</span>
+              <button
+                className="iw-page-btn"
+                onClick={() => state.page < maxPage && setState({ ...state, page: state.page + 1 })}
+              >›</button>
             </div>
           </div>
+
+          <button
+            className="iw-unfollow-btn"
+            onClick={() => {
+              if (!confirm("Are you sure?")) return;
+              // @ts-ignore
+              setState(prev => {
+                if (prev.status !== "scanning") return prev;
+                if (prev.selectedResults.length === 0) {
+                  alert("Select at least one user.");
+                  return prev;
+                }
+                return {
+                  ...prev,
+                  status: "unfollowing",
+                  percentage: 0,
+                  unfollowLog: [],
+                  filter: { showSucceeded: true, showFailed: true },
+                };
+              });
+            }}
+          >
+            UNFOLLOW ({state.selectedResults.length})
+          </button>
         </div>
-        <button
-          className="unfollow"
-          onClick={() => {
-            if (!confirm("Are you sure?")) {
-              return;
-            }
-            //TODO TEMP until types are properly fixed
-            // @ts-ignore
-            setState(prevState => {
-              if (prevState.status !== "scanning") {
-                return prevState;
-              }
-              if (prevState.selectedResults.length === 0) {
-                alert("Must select at least a single user to unfollow");
-                return prevState;
-              }
-              const newState: State = {
-                ...prevState,
-                status: "unfollowing",
-                percentage: 0,
-                unfollowLog: [],
-                filter: {
-                  showSucceeded: true,
-                  showFailed: true,
-                },
-              };
-              return newState;
-            });
-          }}
-        >
-          UNFOLLOW ({state.selectedResults.length})
-        </button>
       </aside>
-      <article className="results-container">
-        <nav className="tabs-container">
-          <div
-            className={`tab ${state.currentTab === "non_whitelisted" ? "tab-active" : ""}`}
-            onClick={() => {
-              if (state.currentTab === "non_whitelisted") {
-                return;
-              }
-              setState({
-                ...state,
-                currentTab: "non_whitelisted",
-                selectedResults: [],
-              });
-            }}
-          >
-            Non-Whitelisted
-          </div>
-          <div
-            className={`tab ${state.currentTab === "whitelisted" ? "tab-active" : ""}`}
-            onClick={() => {
-              if (state.currentTab === "whitelisted") {
-                return;
-              }
-              setState({
-                ...state,
-                currentTab: "whitelisted",
-                selectedResults: [],
-              });
-            }}
-          >
-            Whitelisted
-          </div>
+
+      {/* ── Main content ── */}
+      <article className="iw-main">
+        {/* Tab bar */}
+        <nav className="iw-tabs">
+          {(["non_whitelisted", "whitelisted"] as const).map(tab => (
+            <button
+              key={tab}
+              className={`iw-tab ${state.currentTab === tab ? "iw-tab--active" : ""}`}
+              onClick={() => state.currentTab !== tab && setState({ ...state, currentTab: tab, selectedResults: [] })}
+            >
+              {tab === "non_whitelisted" ? "Non-Whitelisted" : "Whitelisted"}
+            </button>
+          ))}
         </nav>
-        {getCurrentPageUnfollowers(usersForDisplay, state.page).map(user => {
-          const firstLetter = user.username.substring(0, 1).toUpperCase();
-          return (
-            <>
-              {firstLetter !== currentLetter && onNewLetter(firstLetter)}
-              <label className={`result-item${state.selectedResults.some(s => s.id === user.id) ? ' result-item--selected' : ''}`}>
-                <div className="flex grow align-center">
-                  <div
-                    className="avatar-container"
-                    onClick={(e: React.MouseEvent<HTMLDivElement>) => {
-                      // Prevent selecting result when trying to add to whitelist.
-                      e.preventDefault();
-                      e.stopPropagation();
-                      let whitelistedResults: readonly UserNode[] = [];
-                      switch (state.currentTab) {
-                        case "non_whitelisted":
-                          whitelistedResults = [...state.whitelistedResults, user];
-                          break;
 
-                        case "whitelisted":
-                          whitelistedResults = state.whitelistedResults.filter(
-                            result => result.id !== user.id,
-                          );
-                          break;
+        {/* User cards */}
+        <div className="iw-card-list">
+          {getCurrentPageUnfollowers(usersForDisplay, state.page).map(user => {
+            const firstLetter = user.username[0].toUpperCase();
+            const isSelected = state.selectedResults.some(s => s.id === user.id);
+            const isWhitelisted = state.whitelistedResults.some(r => r.id === user.id);
+            const showDivider = firstLetter !== currentLetter;
+            if (showDivider) currentLetter = firstLetter;
 
-                        default:
-                          assertUnreachable(state.currentTab);
-                      }
-                      localStorage.setItem(
-                        WHITELISTED_RESULTS_STORAGE_KEY,
-                        JSON.stringify(whitelistedResults),
-                      );
-                      setState({ ...state, whitelistedResults });
-                    }}
-                  >
-                    <img
-                      className="avatar"
-                      alt={user.username}
-                      src={user.profile_pic_url}
-                    />
-                    <div className="avatar-preview">
-                      <img src={user.profile_pic_url.replace("s150x150/", "s320x320/")} alt={user.username} />
-                    </div>
-                    <span className="avatar-icon-overlay-container">
-                      {state.currentTab === "non_whitelisted" ? (
-                        <UserCheckIcon />
-                      ) : (
-                        <UserUncheckIcon />
-                      )}
-                    </span>
+            return (
+              <React.Fragment key={user.id}>
+                {showDivider && (
+                  <div className="iw-alpha-divider">
+                    <span>{firstLetter}</span>
+                    <div className="iw-alpha-line" />
                   </div>
-                  <div className="flex column m-medium">
-                    <a
-                      className="fs-xlarge"
-                      target="_blank"
-                      href={`/${user.username}`}
-                      rel="noreferrer"
-                    >
-                      {user.username}
-                    </a>
-                    <span className="fs-medium">{user.full_name}</span>
-                  </div>
-                  {user.is_verified && <div className="verified-badge">✔</div>}
-                  {user.is_private && (
-                    <div className="flex justify-center w-100">
-                      <span className="private-indicator">Private</span>
-                    </div>
-                  )}
-                </div>
-                <div className="flex align-center gap-small">
-                  <button
-                    className={`whitelist-star-button ${state.currentTab === "whitelisted" ? "active" : ""}`}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      let whitelistedResults: readonly UserNode[] = [];
-                      if (state.whitelistedResults.some(r => r.id === user.id)) {
-                        // Remove from whitelist
-                        whitelistedResults = state.whitelistedResults.filter(r => r.id !== user.id);
-                      } else {
-                        // Add to whitelist
-                        whitelistedResults = [...state.whitelistedResults, user];
-                      }
-                      
-                      localStorage.setItem(
-                        WHITELISTED_RESULTS_STORAGE_KEY,
-                        JSON.stringify(whitelistedResults),
-                      );
-                      setState({ ...state, whitelistedResults });
-                    }}
-                    title={state.whitelistedResults.some(r => r.id === user.id) ? "Remove from whitelist" : "Add to whitelist"}
-                  >
-                    ★
-                  </button>
+                )}
+                <label className={`iw-card ${isSelected ? "iw-card--selected" : ""}`}>
+                  {isSelected && <div className="iw-card-accent" />}
+
                   <input
-                    className="account-checkbox"
+                    className="iw-card-checkbox"
                     type="checkbox"
-                    checked={state.selectedResults.indexOf(user) !== -1}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => toggleUser(e.currentTarget.checked, user)}
+                    checked={isSelected}
+                    onChange={e => toggleUser(e.currentTarget.checked, user)}
                   />
-                </div>
-              </label>
-            </>
-          );
-        })}
+
+                  <div className="iw-card-avatar-wrap" onClick={e => toggleWhitelist(e, user)}>
+                    <img className="iw-card-avatar" src={user.profile_pic_url} alt={user.username} />
+                    <div className="iw-card-avatar-overlay">
+                      <span>{isWhitelisted ? "★" : "☆"}</span>
+                    </div>
+                  </div>
+
+                  <div className="iw-card-info">
+                    <div className="iw-card-username-row">
+                      <a
+                        className="iw-card-username"
+                        href={`https://www.instagram.com/${user.username}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        onClick={e => e.stopPropagation()}
+                      >
+                        @{user.username}
+                      </a>
+                      {user.is_verified && <span className="iw-badge-verified">✓</span>}
+                      {user.is_private && <span className="iw-badge-private">🔒 Private</span>}
+                    </div>
+                    <span className="iw-card-fullname">{user.full_name}</span>
+                  </div>
+
+                  <button
+                    className="iw-card-star"
+                    title={isWhitelisted ? "Remove from whitelist" : "Add to whitelist"}
+                    onClick={(e: React.MouseEvent<HTMLElement>) => toggleWhitelist(e, user)}
+                  >
+                    {isWhitelisted ? "★" : "☆"}
+                  </button>
+                </label>
+              </React.Fragment>
+            );
+          })}
+
+          {usersForDisplay.length === 0 && (
+            <div className="iw-empty-state">
+              <div className="iw-empty-icon">⊘</div>
+              <h3>Hiç sonuç yok</h3>
+              <p>Filtreleri değiştirmeyi deneyin.</p>
+            </div>
+          )}
+        </div>
       </article>
     </section>
   );

@@ -1,22 +1,41 @@
-// Colors
-$clr-red: #ac2626;
-$clr-green: #56d756;
-$clr-cyan: #00ffff;
-$clr-white: #ffffff;
-$clr-black: #111111;
-$clr-gray: #222222;
-$clr-border: #333333;
+// Design Tokens — InstaWatch v2
+$bg-main:                #131313;
+$surface-sidebar:        #161616;
+$surface-card:           #111111;
+$surface-container:      #201f1f;
+$surface-container-high: #2a2a2a;
+$surface-modal:          #1c1c1c;
 
-// Background Colors
-$bg-primary: $clr-black; // Main background color
-$bg-secondary: $clr-gray; // Secondary background color
+$primary:                #b3c5ff;
+$primary-container:      #0066ff;
 
-// Sizes
-$size-small: 0.5rem;
-$size-medium: 1rem;
-$size-large: 1.5rem;
-$size-xlarge: 2rem;
+$text-primary:           #ffffff;
+$text-secondary:         #888888;
+$text-muted:             #444444;
 
-// Borders
+$border-subtle:          rgba(255, 255, 255, 0.06);
+$border-medium:          rgba(255, 255, 255, 0.10);
+
+$danger:                 #FF3B30;
+$success:                #30D158;
+$warning:                #FFD60A;
+$purple:                 #BF5AF2;
+
+// Legacy aliases kept for existing components
+$clr-red:       $danger;
+$clr-green:     $success;
+$clr-cyan:      #00ffff;
+$clr-white:     $text-primary;
+$clr-black:     $surface-card;
+$clr-gray:      $surface-container;
+$clr-border:    $border-subtle;
+$bg-primary:    $bg-main;
+$bg-secondary:  $surface-container;
+
+$size-small:    0.5rem;
+$size-medium:   1rem;
+$size-large:    1.5rem;
+$size-xlarge:   2rem;
+
 $border-radius: 8px;
-$border-color: $clr-border;
+$border-color:  $border-subtle;
