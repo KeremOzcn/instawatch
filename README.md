@@ -1,93 +1,126 @@
-# 📱 Instagram Unfollowers
+# InstaWatch
 
-[![Maintenance](https://img.shields.io/maintenance/yes/2026)](https://github.com/davidarroyo1234/InstagramUnfollowers)
+> Track your Instagram followers over time — see who unfollowed you, who you unfollowed, and mutual changes between snapshots.
 
-A nifty tool that lets you see who doesn't follow you back on Instagram.  
-<u>Browser-based and requires no downloads or installations!</u>
+[![Version](https://img.shields.io/badge/version-1.2.0-blue)](https://github.com/KeremOzcn/instawatch/releases)
+[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![Tampermonkey](https://img.shields.io/badge/Tampermonkey-compatible-orange)](https://www.tampermonkey.net/)
 
-## ⚠️ WARNING
+---
 
-This version utilizes the Instagram API for better performance.  
+## Features
 
-## 🖥️ Desktop Usage
+- **Follower & Following Scan** — fetches both lists directly from Instagram's API
+- **Snapshot History** — every scan is saved; compare any two snapshots side by side
+- **Change Categories** — new followers, lost followers, who you unfollowed, and mutual unfollows
+- **Statistics Page** — per-scan table with deltas and a lifetime growth overview
+- **Export** — download your following list, followers list, or full snapshot history as JSON or CSV
+- **Whitelist** — star accounts to exclude them from unfollow selection
+- **Bulk Unfollow** — select multiple users and unfollow them in one click with rate-limit protection
+- **Sidebar Navigation** — Dashboard / Geçmiş / İstatistikler / Dışa Aktar
 
-1. Copy the code from: [InstagramUnfollowers Tool](https://davidarroyo1234.github.io/InstagramUnfollowers/)
+---
 
-2. Press the COPY button to copy the code.
+## Installation
 
-    <img src="./assets/copy_code.png" alt="Copy code button" />
+### Requirements
 
-3. Go to Instagram website and log in to your account
+- [Tampermonkey](https://www.tampermonkey.net/) browser extension (Chrome, Firefox, Edge, Safari)
 
-4. Open the developer console:
-   - Windows: `Ctrl + Shift + J`
-   - Mac OS: `⌘ + ⌥ + I`
+### Steps
 
-5. Paste the code and you'll see this interface:
+1. Install Tampermonkey from your browser's extension store
+2. Click the link below to install InstaWatch directly:
 
-    <img src="./assets/initial.png" alt="Initial screen" />
+   **[→ Install instawatch.user.js](https://raw.githubusercontent.com/KeremOzcn/instawatch/master/instawatch.user.js)**
 
-6. Click "RUN" to start scanning
+3. Tampermonkey will open a confirmation page — click **Install**
+4. Go to [instagram.com](https://www.instagram.com) and log in
+5. The InstaWatch dashboard will appear automatically
 
-7. After scanning completes, you'll see the results:
+### Updating
 
-    <img src="./assets/results.png" alt="Results screen" />
+Tampermonkey checks for updates automatically via the `@updateURL` header. You can also force a manual check from Tampermonkey dashboard → Scripts → InstaWatch → Check for updates.
 
-8. 🤍 Whitelist users by clicking their profile image
+---
 
-9. 💾 Manage your whitelist via Settings:
-   - Export: Save your whitelist as a JSON backup file
-   - Import: Restore or merge whitelisted users from a file
-   - Clear: Remove all users from whitelist
-   
-   Your whitelist persists between sessions automatically!
+## Usage
 
-    <img src="./assets/settings_whitelist.png" alt="Settings screen" />
+### Scanning
 
-10. ✅ Select users to unfollow using the checkboxes
+Click **Start Scan** on the initial screen. InstaWatch fetches your following list and followers list in two phases. A progress bar in the header tracks both phases. When complete, results appear in the Dashboard tab.
 
-11. ⚙️ Customize script timings via the "Settings" button:
+### Dashboard
 
-    <img src="./assets/settings.png" alt="Settings screen" />
+- Filter by category: Non-Followers, Followers, Verified, Private
+- Select users via checkboxes, or use **+ Verified** / **+ Private** quick-select
+- Star (☆) an avatar or row to toggle whitelist status
+- Click **UNFOLLOW (n)** to bulk-unfollow selected users with automatic rate-limit delays
 
-## 📱 Mobile Usage
+### History
 
-For Android users who want to use it on mobile:
+Every completed scan is saved as a snapshot. Select any two snapshots to diff them — new followers, lost followers, users you unfollowed, and mutual unfollows.
 
-1. Download the latest version of [Eruda Android Browser](https://github.com/liriliri/eruda-android/releases/)
-2. Open Instagram web through the Eruda browser
-3. Follow the same steps as desktop (the console will be automatically available when clicking the eruda icon)
+### Statistics
 
-## ⚡ Performance Notes
+Overview cards show current follower count, following count, and lifetime growth. The table lists every scan with per-snapshot deltas.
 
-- Processing time increases with the number of users to check
-- Script works on both Chromium and Firefox-based browsers
-- The script takes a few more seconds to load on mobile
-- Whitelist data is stored locally in your browser (localStorage)
+### Export
 
-## ✨ Features
+| Data | Formats |
+|------|---------|
+| Following list | JSON, CSV |
+| Followers list | JSON, CSV |
+| Full snapshot history | JSON |
 
-- 🔍 Scan and identify users who don't follow you back
-- 🤍 Whitelist system to protect specific accounts from unfollowing
-- 💾 Export/Import whitelist functionality for backup and transfer
-- ⚙️ Customizable timing settings to avoid rate limits
-- 🎨 Clean, minimalist interface inspired by Apple design
-- 📱 Fully responsive - works on desktop and mobile
-- 🔒 All data stored locally - no external servers
+---
 
-## 🛠️ Development
+## Development
 
-- Node version: 16.14.0 (If using nvm, run `nvm use`)
-- After modifying `main.tsx`, run the "build" command to format, compress, and convert your code
-- Automatic re-building can be done using nodemon build-dev
+### Requirements
 
-## ⚖️ Legal & License
+- Node.js 16+
+- npm
 
-**Disclaimer:** This tool is not affiliated, associated, authorized, endorsed by, or officially connected with Instagram.
+### Setup
 
-⚠️ Use at your own risk!
+```bash
+git clone https://github.com/KeremOzcn/instawatch.git
+cd instawatch
+npm install
+```
 
-📜 Licensed under the [MIT License](LICENSE)
-- ✅ Free to use, copy, and modify
-- 🤝 Open source and community-friendly
-- 📋 See [LICENSE](LICENSE) file for full terms
+### Build
+
+```bash
+# Production build + generate instawatch.user.js
+npm run build-userscript
+
+# Watch mode (webpack only)
+npm run webpack-dev
+```
+
+Build pipeline:
+1. **webpack** compiles `src/main.tsx` → `dist/dist.js`
+2. `scripts/build-userscript.js` prepends the Tampermonkey `==UserScript==` header → `instawatch.user.js`
+
+### Stack
+
+- Preact (React-compatible, small footprint)
+- TypeScript
+- SCSS (`iw-*` namespace, dark luxury design tokens)
+- Webpack 5
+
+---
+
+## Disclaimer
+
+This is an independent project not affiliated with, endorsed by, or connected to Instagram or Meta Platforms, Inc. Use at your own risk. Excessive API calls may trigger temporary rate limits on your account.
+
+---
+
+## License
+
+MIT © 2026 [Kerem Özcan](https://github.com/KeremOzcn)
+
+See [LICENSE](LICENSE) for the full text.
