@@ -15,8 +15,6 @@ export interface SearchingProps {
   pauseScan: () => void;
   handleScanFilter: (e: React.ChangeEvent<HTMLInputElement>) => void;
   toggleUser: (checked: boolean, user: UserNode) => void;
-  UserCheckIcon: React.FC;
-  UserUncheckIcon: React.FC;
   onTabChange: (tab: MainTab) => void;
   onDeleteSnapshot: (id: string) => void;
 }
@@ -29,14 +27,8 @@ const NAV_ITEMS: { tab: MainTab; label: string; icon: string }[] = [
 ];
 
 export const Searching = ({
-  state,
-  setState,
-  scanningPaused,
-  pauseScan,
-  handleScanFilter,
-  toggleUser,
-  onTabChange,
-  onDeleteSnapshot,
+  state, setState, scanningPaused, pauseScan,
+  handleScanFilter, toggleUser, onTabChange, onDeleteSnapshot,
 }: SearchingProps) => {
   if (state.status !== "scanning") return null;
 
