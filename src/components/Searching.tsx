@@ -1,5 +1,5 @@
 import React from "react";
-import { assertUnreachable, getCurrentPageUnfollowers, getMaxPage, getUsersForDisplay, isWithoutProfilePicture } from "../utils/utils";
+import { assertUnreachable, getCurrentPageUnfollowers, getMaxPage, getUsersForDisplay } from "../utils/utils";
 import { State } from "../model/state";
 import { UserNode } from "../model/user";
 import { WHITELISTED_RESULTS_STORAGE_KEY } from "../constants/constants";
@@ -86,15 +86,6 @@ export const Searching = ({
               />
               &nbsp;Private
             </label>
-            <label className="badge m-small">
-              <input
-                type="checkbox"
-                name="showWithOutProfilePicture"
-                checked={state.filter.showWithOutProfilePicture}
-                onChange={handleScanFilter}
-              />
-              &nbsp;No Pic
-            </label>
           </menu>
 
           <div className="sidebar-buttons-grid">
@@ -119,17 +110,6 @@ export const Searching = ({
               }}
             >
               Private
-            </button>
-            <button
-              className="button-secondary"
-              onClick={() => {
-                const noPicUsers = usersForDisplay.filter(u => isWithoutProfilePicture(u));
-                const currentIds = new Set(state.selectedResults.map(u => u.id));
-                const toAdd = noPicUsers.filter(u => !currentIds.has(u.id));
-                setState({ ...state, selectedResults: [...state.selectedResults, ...toAdd] });
-              }}
-            >
-              No Pic
             </button>
             <button
               className="button-secondary danger-text"
@@ -276,7 +256,7 @@ export const Searching = ({
           return (
             <>
               {firstLetter !== currentLetter && onNewLetter(firstLetter)}
-              <label className="result-item">
+              <label className={`result-item${state.selectedResults.some(s => s.id === user.id) ? ' result-item--selected' : ''}`}>
                 <div className="flex grow align-center">
                   <div
                     className="avatar-container"

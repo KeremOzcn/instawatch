@@ -99,7 +99,6 @@ function App() {
         showFollowers: false,
         showVerified: true,
         showPrivate: true,
-        showWithOutProfilePicture: true,
       },
       snapshots,
       currentSnapshotId: null,

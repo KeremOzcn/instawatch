@@ -101,9 +101,6 @@ export function getUsersForDisplay(
     if (!filter.showNonFollowers && !result.follows_viewer) {
       continue;
     }
-    if (!filter.showWithOutProfilePicture && isWithoutProfilePicture(result)) {
-      continue;
-    }
     const userMatchesSearchTerm =
       result.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
       result.full_name.toLowerCase().includes(searchTerm.toLowerCase());

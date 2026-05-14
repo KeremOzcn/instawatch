@@ -3,6 +3,7 @@ import { Snapshot } from "../../model/snapshot";
 import { diffSnapshots } from "../../utils/snapshot-diff";
 import { SnapshotTimeline } from "./SnapshotTimeline";
 import { SnapshotDiffPanel } from "./SnapshotDiffPanel";
+import { SnapshotStats } from "./SnapshotStats";
 
 interface HistoryViewProps {
   snapshots: readonly Snapshot[];
@@ -47,7 +48,12 @@ export const HistoryView = ({ snapshots, currentSnapshotId, onDelete }: HistoryV
           onDelete(id);
         }}
       />
-      <SnapshotDiffPanel diff={diff} />
+      <div className="history-main">
+        {diff && prevSnap && currentSnap && (
+          <SnapshotStats prev={prevSnap} curr={currentSnap} diff={diff} />
+        )}
+        <SnapshotDiffPanel diff={diff} />
+      </div>
     </div>
   );
 };
