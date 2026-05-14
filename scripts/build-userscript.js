@@ -4,7 +4,7 @@ const path = require('path');
 const header = `// ==UserScript==
 // @name         InstaWatch
 // @namespace    https://github.com/KeremOzcn/instawatch
-// @version      1.1.0
+// @version      1.2.0
 // @description  Track your Instagram followers over time — see who unfollowed you, who you unfollowed, and mutual changes between snapshots.
 // @author       KeremOzcn
 // @match        https://www.instagram.com/*

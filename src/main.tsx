@@ -23,8 +23,6 @@ import { State } from "./model/state";
 import { Searching } from "./components/Searching";
 import { Toolbar } from "./components/Toolbar";
 import { Unfollowing } from "./components/Unfollowing";
-import { MainTabs } from "./components/MainTabs";
-import { HistoryView } from "./components/history/HistoryView";
 import { Timings } from "./model/timings";
 import { loadWhitelist, saveWhitelist, loadTimings, saveTimings } from "./utils/whitelist-manager";
 
@@ -83,7 +81,7 @@ function App() {
     setState({
       status: "scanning",
       phase: 'following',
-      mainTab: 'current',
+      mainTab: 'dashboard',
       page: 1,
       searchTerm: "",
       currentTab: "non_whitelisted",
@@ -534,8 +532,8 @@ function App() {
       markup = <NotSearching onScan={onScan}></NotSearching>;
       break;
 
-    case "scanning": {
-      const searchingView = <Searching
+    case "scanning":
+      markup = <Searching
         state={state}
         handleScanFilter={handleScanFilter}
         toggleUser={toggleUser}
@@ -544,29 +542,13 @@ function App() {
         scanningPaused={scanningPaused}
         UserCheckIcon={UserCheckIcon}
         UserUncheckIcon={UserUncheckIcon}
-      />;
-      const historyView = <HistoryView
-        snapshots={state.snapshots}
-        currentSnapshotId={state.currentSnapshotId}
-        onDelete={(id) => {
+        onTabChange={(tab) => setState({ ...state, mainTab: tab })}
+        onDeleteSnapshot={(id) => {
           const updated = deleteSnapshot(id);
           setState({ ...state, snapshots: updated });
         }}
       />;
-      markup = (
-        <>
-          {state.phase === 'done' && (
-            <MainTabs
-              activeTab={state.mainTab}
-              onChange={(tab) => setState({ ...state, mainTab: tab })}
-              hasHistory={state.snapshots.length > 1}
-            />
-          )}
-          {state.mainTab === 'current' ? searchingView : historyView}
-        </>
-      );
       break;
-    }
 
     case "unfollowing":
       markup = <Unfollowing

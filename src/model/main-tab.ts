@@ -1,1 +1,1 @@
-export type MainTab = 'current' | 'history';
+export type MainTab = 'dashboard' | 'history' | 'statistics' | 'export';
