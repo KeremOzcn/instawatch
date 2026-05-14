@@ -35,10 +35,10 @@ export const Toolbar = ({
 
   return (
     <header className="app-header">
-      {isActiveProcess && (
-        <div 
-          className="progressbar" 
-          style={{ '--progress-width': `${state.status !== 'initial' ? state.percentage : 0}%` } as React.CSSProperties}
+      {isActiveProcess && state.status === 'unfollowing' && (
+        <div
+          className="progressbar"
+          style={{ '--progress-width': `${state.percentage}%` } as React.CSSProperties}
         />
       )}
       <div className="app-header-content">
@@ -77,7 +77,7 @@ export const Toolbar = ({
               case "scanning":
                 return copyListToClipboard(
                   getUsersForDisplay(
-                    state.results,
+                    state.followingResults,
                     state.whitelistedResults,
                     state.currentTab,
                     state.searchTerm,
@@ -100,7 +100,7 @@ export const Toolbar = ({
           title="Export to JSON"
           onClick={() => {
             if (state.status === "scanning") {
-              exportToJSON(getUsersForDisplay(state.results, state.whitelistedResults, state.currentTab, state.searchTerm, state.filter));
+              exportToJSON(getUsersForDisplay(state.followingResults, state.whitelistedResults, state.currentTab, state.searchTerm, state.filter));
             }
           }}
           disabled={state.status !== "scanning"}
@@ -112,7 +112,7 @@ export const Toolbar = ({
           title="Export to CSV"
           onClick={() => {
             if (state.status === "scanning") {
-              exportToCSV(getUsersForDisplay(state.results, state.whitelistedResults, state.currentTab, state.searchTerm, state.filter));
+              exportToCSV(getUsersForDisplay(state.followingResults, state.whitelistedResults, state.currentTab, state.searchTerm, state.filter));
             }
           }}
           disabled={state.status !== "scanning"}
@@ -156,7 +156,7 @@ export const Toolbar = ({
             disabled={state.percentage < 100}
             checked={
               (() => {
-                const displayed = getUsersForDisplay(state.results, state.whitelistedResults, state.currentTab, state.searchTerm, state.filter);
+                const displayed = getUsersForDisplay(state.followingResults, state.whitelistedResults, state.currentTab, state.searchTerm, state.filter);
                 const pageUsers = getCurrentPageUnfollowers(displayed, state.page);
                 // Fix: Check if pageUsers is not empty and all are selected
                 // Previous logic didn't account for empty page or partial selections correctly
@@ -179,7 +179,7 @@ export const Toolbar = ({
             checked={
               state.selectedResults.length ===
               getUsersForDisplay(
-                state.results,
+                state.followingResults,
                 state.whitelistedResults,
                 state.currentTab,
                 state.searchTerm,

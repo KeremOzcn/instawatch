@@ -14,13 +14,17 @@ import {
   assertUnreachable,
   getCookie,
   getCurrentPageUnfollowers,
-  getUsersForDisplay, sleep, unfollowUserUrlGenerator, urlGenerator,
+  getUsersForDisplay, sleep, unfollowUserUrlGenerator, followingUrlGenerator, followersUrlGeneratorV2,
 } from "./utils/utils";
+import { loadSnapshots, saveSnapshot, toLeanUser, deleteSnapshot } from "./utils/snapshot-manager";
+import { ScanPhaseIndicator } from "./components/ScanPhaseIndicator";
 import { NotSearching } from "./components/NotSearching";
 import { State } from "./model/state";
 import { Searching } from "./components/Searching";
 import { Toolbar } from "./components/Toolbar";
 import { Unfollowing } from "./components/Unfollowing";
+import { MainTabs } from "./components/MainTabs";
+import { HistoryView } from "./components/history/HistoryView";
 import { Timings } from "./model/timings";
 import { loadWhitelist, saveWhitelist, loadTimings, saveTimings } from "./utils/whitelist-manager";
 
@@ -75,13 +79,19 @@ function App() {
       return;
     }
     const whitelistedResults = loadWhitelist();
+    const snapshots = loadSnapshots();
     setState({
       status: "scanning",
+      phase: 'following',
+      mainTab: 'current',
       page: 1,
       searchTerm: "",
       currentTab: "non_whitelisted",
       percentage: 0,
-      results: [],
+      followingPercentage: 0,
+      followersPercentage: 0,
+      followingResults: [],
+      followersResults: [],
       selectedResults: [],
       whitelistedResults,
       filter: {
@@ -91,6 +101,8 @@ function App() {
         showPrivate: true,
         showWithOutProfilePicture: true,
       },
+      snapshots,
+      currentSnapshotId: null,
     });
   };
 
@@ -157,7 +169,7 @@ function App() {
       setState({
         ...state,
         selectedResults: getUsersForDisplay(
-          state.results,
+          state.followingResults,
           state.whitelistedResults,
           state.currentTab,
           state.searchTerm,
@@ -182,7 +194,7 @@ function App() {
         ...state,
         selectedResults: getCurrentPageUnfollowers(
           getUsersForDisplay(
-            state.results,
+            state.followingResults,
             state.whitelistedResults,
             state.currentTab,
             state.searchTerm,
@@ -240,75 +252,200 @@ function App() {
       if (state.status !== "scanning") {
         return;
       }
-      const results = [...state.results];
-      let scrollCycle = 0;
-      let url = urlGenerator();
-      let hasNext = true;
-      let currentFollowedUsersCount = 0;
-      let totalFollowedUsersCount = -1;
 
-      while (hasNext) {
-        let receivedData: User;
-        try {
-          receivedData = (await fetch(url).then(res => res.json())).data.user.edge_follow;
-        } catch (e) {
-          console.error(e);
-          continue;
-        }
+      const scanPaginated = async (
+        urlGen: (cursor?: string) => string,
+        edgeKey: string,
+        onBatch: (nodes: UserNode[], pct: number) => void,
+      ) => {
+        const collected: UserNode[] = [];
+        let scrollCycle = 0;
+        let url = urlGen();
+        let hasNext = true;
+        let currentCount = 0;
+        let totalCount = -1;
 
-        if (totalFollowedUsersCount === -1) {
-          totalFollowedUsersCount = receivedData.count;
-        }
-
-        hasNext = receivedData.page_info.has_next_page;
-        url = urlGenerator(receivedData.page_info.end_cursor);
-        currentFollowedUsersCount += receivedData.edges.length;
-        receivedData.edges.forEach(x => results.push(x.node));
-
-        setState(prevState => {
-          if (prevState.status !== "scanning") {
-            return prevState;
+        while (hasNext) {
+          let receivedData: User;
+          try {
+            const json = await fetch(url).then(res => res.json());
+            receivedData = json.data.user[edgeKey];
+          } catch (e) {
+            console.error(e);
+            continue;
           }
-          const newState: State = {
-            ...prevState,
-            // Fix: Changed from Math.floor to Math.round to ensure progress reaches 100%
-            // Math.floor would leave progress at 99% when near completion
-            percentage: Math.round((currentFollowedUsersCount / totalFollowedUsersCount) * 100),
-            results,
-          };
-          return newState;
-        });
 
-        // Pause scanning if user requested so.
-        while (scanningPaused) {
-          await sleep(1000);
-          console.info("Scan paused");
+          if (totalCount === -1) {
+            totalCount = receivedData.count;
+          }
+
+          hasNext = receivedData.page_info.has_next_page;
+          url = urlGen(receivedData.page_info.end_cursor);
+          currentCount += receivedData.edges.length;
+          receivedData.edges.forEach(x => collected.push(x.node));
+
+          const pct = Math.round((currentCount / totalCount) * 100);
+          onBatch([...collected], pct);
+
+          while (scanningPaused) {
+            await sleep(1000);
+          }
+
+          const microPause = Math.floor(Math.random() * 1500) + 500;
+          await sleep(microPause);
+          await sleep(Math.floor(Math.random() * (timings.timeBetweenSearchCycles - timings.timeBetweenSearchCycles * 0.7)) + timings.timeBetweenSearchCycles);
+
+          scrollCycle++;
+          if (scrollCycle > 6) {
+            scrollCycle = 0;
+            const longSleepVar = Math.max(
+              0,
+              timings.timeToWaitAfterFiveSearchCycles + (Math.random() * 10000 - 5000),
+            );
+            setToast({ show: true, text: `Oran sınırını aşmamak için ${Math.round(longSleepVar / 1000)} saniye bekleniyor...` });
+            await sleep(longSleepVar);
+          }
+          setToast({ show: false });
+        }
+        return collected;
+      };
+
+      // Phase 1: following
+      const followingResults = await scanPaginated(
+        followingUrlGenerator,
+        'edge_follow',
+        (nodes, pct) => {
+          setState(prevState => {
+            if (prevState.status !== "scanning") return prevState;
+            return {
+              ...prevState,
+              followingResults: nodes,
+              followingPercentage: pct,
+              percentage: Math.round(pct / 2),
+            };
+          });
+        },
+      );
+
+      setState(prevState => {
+        if (prevState.status !== "scanning") return prevState;
+        return { ...prevState, phase: 'followers' };
+      });
+
+      setToast({ show: true, text: 'Takipçiler taranıyor...' });
+
+      // Phase 2: followers — uses newer /api/v1/friendships/ endpoint
+      const scanFollowers = async (
+        onBatch: (nodes: UserNode[], pct: number) => void,
+      ): Promise<UserNode[]> => {
+        const collected: UserNode[] = [];
+        let scrollCycle = 0;
+        let cursor: string | undefined;
+        let hasNext = true;
+        let currentCount = 0;
+        const estimatedTotal = Math.max(followingResults.length, 200);
+
+        while (hasNext) {
+          let json: any; // eslint-disable-line @typescript-eslint/no-explicit-any
+          try {
+            json = await fetch(followersUrlGeneratorV2(cursor), {
+              headers: { 'X-IG-App-ID': '936619743392459' },
+              credentials: 'include',
+            }).then(res => res.json());
+          } catch (e) {
+            console.error(e);
+            continue;
+          }
+
+          if (!json.users) break;
+
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const batch: UserNode[] = json.users.map((u: any) => ({
+            id: u.pk,
+            username: u.username,
+            full_name: u.full_name,
+            profile_pic_url: u.profile_pic_url,
+            is_private: u.is_private,
+            is_verified: u.is_verified,
+            follows_viewer: true,
+            followed_by_viewer: u.followed_by_viewer ?? false,
+            requested_by_viewer: false,
+            reel: null,
+          } as unknown as UserNode));
+
+          cursor = json.next_max_id || undefined;
+          hasNext = !!cursor;
+          currentCount += batch.length;
+          batch.forEach(u => collected.push(u));
+
+          const pct = Math.min(Math.round((currentCount / estimatedTotal) * 95), 95);
+          onBatch([...collected], pct);
+
+          while (scanningPaused) {
+            await sleep(1000);
+          }
+
+          const microPause = Math.floor(Math.random() * 1500) + 500;
+          await sleep(microPause);
+          await sleep(Math.floor(Math.random() * (timings.timeBetweenSearchCycles - timings.timeBetweenSearchCycles * 0.7)) + timings.timeBetweenSearchCycles);
+
+          scrollCycle++;
+          if (scrollCycle > 6) {
+            scrollCycle = 0;
+            const longSleepVar = Math.max(
+              0,
+              timings.timeToWaitAfterFiveSearchCycles + (Math.random() * 10000 - 5000),
+            );
+            setToast({ show: true, text: `Oran sınırını aşmamak için ${Math.round(longSleepVar / 1000)} saniye bekleniyor...` });
+            await sleep(longSleepVar);
+          }
+          setToast({ show: false });
         }
 
-        // Human-like behavior: Micro-pause between fetching chunks
-        const microPause = Math.floor(Math.random() * 1500) + 500; // 500ms - 2000ms
-        await sleep(microPause);
+        onBatch([...collected], 100);
+        return collected;
+      };
 
-        // Standard delay between cycles
-        await sleep(Math.floor(Math.random() * (timings.timeBetweenSearchCycles - timings.timeBetweenSearchCycles * 0.7)) + timings.timeBetweenSearchCycles);
-        
-        scrollCycle++;
-        if (scrollCycle > 6) {
-          scrollCycle = 0;
-          // Variable long sleep to avoid patterns
-          const longSleepVar = Math.max(
-            0,
-            timings.timeToWaitAfterFiveSearchCycles + (Math.random() * 10000 - 5000), // +/- 5 seconds
-          );
-          setToast({ show: true, text: `Sleeping ${Math.round(longSleepVar / 1000)} seconds to prevent getting temp blocked` });
-          await sleep(longSleepVar);
-        }
-        setToast({ show: false });
-      }
-      setToast({ show: true, text: "Scanning completed!" });
+      const followersResults = await scanFollowers(
+        (nodes, pct) => {
+          setState(prevState => {
+            if (prevState.status !== "scanning") return prevState;
+            return {
+              ...prevState,
+              followersResults: nodes,
+              followersPercentage: pct,
+              percentage: 50 + Math.round(pct / 2),
+            };
+          });
+        },
+      );
+
+      // Save snapshot
+      const snap = {
+        id: crypto.randomUUID(),
+        timestamp: Date.now(),
+        following: followingResults.map(toLeanUser),
+        followers: followersResults.map(toLeanUser),
+        version: 1 as const,
+      };
+      const updatedSnapshots = saveSnapshot(snap);
+
+      setState(prevState => {
+        if (prevState.status !== "scanning") return prevState;
+        return {
+          ...prevState,
+          phase: 'done',
+          percentage: 100,
+          followingPercentage: 100,
+          followersPercentage: 100,
+          snapshots: updatedSnapshots,
+          currentSnapshotId: snap.id,
+        };
+      });
+
+      setToast({ show: true, text: "Tarama tamamlandı!" });
     };
     scan();
-    // Dependency array not entirely legit, but works this way. TODO: Find a way to fix.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.status]);
 
@@ -399,7 +536,7 @@ function App() {
       break;
 
     case "scanning": {
-      markup = <Searching
+      const searchingView = <Searching
         state={state}
         handleScanFilter={handleScanFilter}
         toggleUser={toggleUser}
@@ -408,7 +545,27 @@ function App() {
         scanningPaused={scanningPaused}
         UserCheckIcon={UserCheckIcon}
         UserUncheckIcon={UserUncheckIcon}
-      ></Searching>;
+      />;
+      const historyView = <HistoryView
+        snapshots={state.snapshots}
+        currentSnapshotId={state.currentSnapshotId}
+        onDelete={(id) => {
+          const updated = deleteSnapshot(id);
+          setState({ ...state, snapshots: updated });
+        }}
+      />;
+      markup = (
+        <>
+          {state.phase === 'done' && (
+            <MainTabs
+              activeTab={state.mainTab}
+              onChange={(tab) => setState({ ...state, mainTab: tab })}
+              hasHistory={state.snapshots.length > 1}
+            />
+          )}
+          {state.mainTab === 'current' ? searchingView : historyView}
+        </>
+      );
       break;
     }
 
@@ -437,6 +594,16 @@ function App() {
           whitelistedUsers={state.status === "scanning" ? state.whitelistedResults : loadWhitelist()}
           onWhitelistUpdate={onWhitelistUpdate}
         ></Toolbar>
+
+        {state.status === 'scanning' && state.phase !== 'done' && (
+          <ScanPhaseIndicator
+            phase={state.phase}
+            followingPercentage={state.followingPercentage}
+            followersPercentage={state.followersPercentage}
+            followingCount={state.followingResults.length}
+            followersCount={state.followersResults.length}
+          />
+        )}
 
         {markup}
 

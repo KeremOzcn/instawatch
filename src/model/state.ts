@@ -3,17 +3,27 @@ import { ScanningTab } from "./scanning-tab";
 import { ScanningFilter } from "./scanning-filter";
 import { UnfollowLogEntry } from "./unfollow-log-entry";
 import { UnfollowFilter } from "./unfollow-filter";
+import { ScanPhase } from "./scan-phase";
+import { MainTab } from "./main-tab";
+import { Snapshot } from "./snapshot";
 
 type ScanningState = {
   readonly status: 'scanning';
+  readonly phase: ScanPhase;
+  readonly mainTab: MainTab;
   readonly page: number;
   readonly currentTab: ScanningTab;
   readonly searchTerm: string;
   readonly percentage: number;
-  readonly results: readonly UserNode[];
+  readonly followingPercentage: number;
+  readonly followersPercentage: number;
+  readonly followingResults: readonly UserNode[];
+  readonly followersResults: readonly UserNode[];
   readonly whitelistedResults: readonly UserNode[];
   readonly selectedResults: readonly UserNode[];
   readonly filter: ScanningFilter;
+  readonly snapshots: readonly Snapshot[];
+  readonly currentSnapshotId: string | null;
 };
 
 type UnfollowingState = {

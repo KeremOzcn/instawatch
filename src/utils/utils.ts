@@ -160,13 +160,26 @@ export function getCookie(name: string): string | null {
   return parts.pop()!.split(';').shift()!;
 }
 
-export function urlGenerator(nextCode?: string): string {
+export function urlGenerator(queryHash: string, nextCode?: string): string {
   const ds_user_id = getCookie('ds_user_id');
   if (nextCode === undefined) {
-    // First url
-    return `https://www.instagram.com/graphql/query/?query_hash=3dec7e2c57367ef3da3d987d89f9dbc8&variables={"id":"${ds_user_id}","include_reel":"true","fetch_mutual":"false","first":"24"}`;
+    return `https://www.instagram.com/graphql/query/?query_hash=${queryHash}&variables={"id":"${ds_user_id}","include_reel":"true","fetch_mutual":"false","first":"24"}`;
   }
-  return `https://www.instagram.com/graphql/query/?query_hash=3dec7e2c57367ef3da3d987d89f9dbc8&variables={"id":"${ds_user_id}","include_reel":"true","fetch_mutual":"false","first":"24","after":"${nextCode}"}`;
+  return `https://www.instagram.com/graphql/query/?query_hash=${queryHash}&variables={"id":"${ds_user_id}","include_reel":"true","fetch_mutual":"false","first":"24","after":"${nextCode}"}`;
+}
+
+export function followingUrlGenerator(nextCode?: string): string {
+  return urlGenerator("3dec7e2c57367ef3da3d987d89f9dbc8", nextCode);
+}
+
+export function followersUrlGenerator(nextCode?: string): string {
+  return urlGenerator("c76146de99bb02f6415203be841dd25", nextCode);
+}
+
+export function followersUrlGeneratorV2(maxId?: string): string {
+  const userId = getCookie('ds_user_id');
+  const base = `https://www.instagram.com/api/v1/friendships/${userId}/followers/?count=200`;
+  return maxId ? `${base}&max_id=${encodeURIComponent(maxId)}` : base;
 }
 
 export function unfollowUserUrlGenerator(idToUnfollow: string): string {

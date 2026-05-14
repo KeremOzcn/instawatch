@@ -31,7 +31,7 @@ export const Searching = ({
   }
 
   const usersForDisplay = getUsersForDisplay(
-    state.results,
+    state.followingResults,
     state.whitelistedResults,
     state.currentTab,
     state.searchTerm,
@@ -140,7 +140,7 @@ export const Searching = ({
           </div>
           <div className="sidebar-stats">
             <p>Displayed: {usersForDisplay.length}</p>
-            <p>Total Scanned: {state.results.length}</p>
+            <p>Total Scanned: {state.followingResults.length}</p>
             <p className="whitelist-counter">
               <span className="whitelist-badge">★</span> Whitelisted: {state.whitelistedResults.length}
             </p>
@@ -152,15 +152,15 @@ export const Searching = ({
               <div className="summary-grid">
                 <div className="summary-item">
                   <span>Non-Followers</span>
-                  <strong>{state.results.filter(u => !u.follows_viewer).length}</strong>
+                  <strong>{state.followingResults.filter(u => !u.follows_viewer).length}</strong>
                 </div>
                 <div className="summary-item">
                   <span>Verified</span>
-                  <strong>{state.results.filter(u => u.is_verified).length}</strong>
+                  <strong>{state.followingResults.filter(u => u.is_verified).length}</strong>
                 </div>
                 <div className="summary-item">
                   <span>Private</span>
-                  <strong>{state.results.filter(u => u.is_private).length}</strong>
+                  <strong>{state.followingResults.filter(u => u.is_private).length}</strong>
                 </div>
               </div>
             </div>

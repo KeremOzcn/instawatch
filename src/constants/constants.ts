@@ -2,6 +2,10 @@ export const INSTAGRAM_HOSTNAME = "www.instagram.com";
 export const UNFOLLOWERS_PER_PAGE = 50;
 export const WHITELISTED_RESULTS_STORAGE_KEY = "iu_whitelisted-results";
 export const TIMINGS_STORAGE_KEY = "iu_timings";
+export const SNAPSHOTS_STORAGE_KEY = "iu_snapshots";
+export const MAX_SNAPSHOTS = 20;
+export const FOLLOWING_QUERY_HASH = "3dec7e2c57367ef3da3d987d89f9dbc8";
+export const FOLLOWERS_QUERY_HASH = "c76146de99bb02f6415203be841dd25";
 
 //TIMINGS CONSTANTS
 export const DEFAULT_TIME_BETWEEN_SEARCH_CYCLES = 1000;
